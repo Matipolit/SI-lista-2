@@ -1,178 +1,154 @@
-mod decision_tree;
-mod halma;
-mod heuristics;
-mod minimax_new;
-//mod minmax;
-
-use halma::board_from_str;
-
-use minimax_new::LogLevel;
-
-use std::{env, fs, time::Instant};
-
-use crate::{
-    decision_tree::DecisionTreeNode,
-    minimax_new::{alfa_beta, minimax},
+use std::{
+    env::{self, SplitPaths},
+    error::Error,
 };
+
+#[derive(Clone, Copy)]
+enum Tile {
+    Empty,
+    Black,
+    White,
+}
+type Board = [[Tile; 16]; 16];
+
+enum Player {
+    Black,
+    White,
+}
+
+enum MoveResult {
+    NotPossible,
+    Move,
+    Jump(u8, u8),
+}
+
+impl Player {
+    fn other(&self) -> Player {
+        match self {
+            Player::Black => Player::White,
+            Player::White => Player::Black,
+        }
+    }
+}
+
+enum GameState {
+    Start,
+    Moved(Player),
+    Won(Player),
+}
+
+struct Move {
+    from: (u8, u8),
+    to: (u8, u8),
+}
+
+struct DecisionTreeNode {
+    board: Board,
+    gameState: GameState,
+    children: Vec<(Move, DecisionTreeNode)>,
+}
+
+struct Coords {
+    x: i8,
+    y: i8
+}
+
+static DIRECTIONS: [Coords; 8] = [
+    (-1, -1),
+    (-1, 0),
+    (0, -1),
+    (1, -1),
+    (-1, 1),
+    (0, 1),
+    (1, 0),
+    (1, 1),
+];
+
+static 
+
+impl DecisionTreeNode {
+    // for a given state of the board, generate all possible moves and set them as children
+    fn generateChildren(&mut self, playerMoving: Player) {
+        for y in 0..15 {
+            for x in 0..15 {
+                if(self.tile_is_mine(x, y, playerMoving)){
+                    for direction in DIRECTIONS.into_iter(){
+                        let move_to = (x as i8 + direction.0, y as i8 + direction.1);
+                        if DecisionTreeNode::coords_in_board(move_to.0, move_to.1){
+                            if self.tile_is_empty(move_to.0 as usize, move_to.1 as usize) {
+                                let mut new_board = self.board.clone();
+                                DecisionTreeNode::move_tile(&mut new_board, (x, y), (move_to.0 as usize, move_to.1 as usize))
+                                self.children.push(DecisionTreeNode{board: new_board, })
+                            }
+                            
+                        }
+                        
+                    }
+                }
+            }
+        }
+    }
+    #[inline]
+    fn coords_in_board(x: i8, y: i8) -> bool{
+        (x < 16) && (x > -1) && (y < 16) && (y > -1)
+    }
+
+    
+    #[inline]
+    fn tile_is_empty(&self, x: usize, y: usize) -> bool {
+        matches!(self.board[y][x], Tile::Empty)
+    }
+
+    #[inline]
+    fn tile_is_mine(&self, x: usize,y: usize, playerMoving: Player) -> bool{
+        match playerMoving{
+            Player::Black => matches!(self.board[y][x], Tile::Black)
+            Player::White => matches!(self.board[y][x], Tile::White)
+        }
+    }
+
+    #[inline]
+    fn move_tile(board: &mut Board, from: (usize, usize), to: (usize, usize)){
+        let tile = board[from.1][from.0];
+        board[from.1][from.0] = Tile::Empty;
+        board[to.1][to.0] = tile;
+    }
+
+    #[inline]
+    fn check_game_state(&self){
+        
+    }
+}
+
+// generate all the moves for the game
+// first player is always black
+// get the first state of the board, generate a decision tree node for it, then for all its children and so on, until either player wins
+fn generateTree() -> DecisionTreeNode {}
+
+fn board_from_str(board_str: &String) -> Result<Board, Box<dyn Error>> {
+    let split_str = board_str.split('\n');
+    let mut board = [[Tile::Empty; 16]; 16];
+    split_str.enumerate().for_each(|(row_idx, line)| {
+        line.chars()
+            .enumerate()
+            .for_each(|(char_idx, char)| match char {
+                '0' => {}
+                '1' => {
+                    board[row_idx][char_idx] = Tile::Black;
+                }
+                '2' => {
+                    board[row_idx][char_idx] = Tile::White;
+                }
+                _ => {}
+            });
+    });
+    Ok(board)
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        panic!("Wrong number of arguments! Usage: cargo run --release -- <board filename> <log level [none, round, all]> <function [minimax, alfabeta]> <max depth>");
+    if args.len() != 2 {
+        panic!("Wrong number of arguments! Usage: cargo run --release -- <board string>");
     }
-    let board_file = &args[1];
-    let board_string = fs::read_to_string(board_file)
-        .expect(format!("Could not read board file: {}", board_file).as_str());
-
-    let parsed_board = board_from_str(&board_string);
-
-    let log_level: LogLevel = match args[2].as_str() {
-        "none" => LogLevel::None,
-        "all" => LogLevel::All,
-        _ => LogLevel::RoundNum,
-    };
-
-    let function = &args[3];
-
-    let max_depth: u32 = args[4].parse().unwrap();
-
-    let rng = rand::thread_rng();
-    let mut heuristic_random = heuristics::HeuristicRandom { rng: rng.clone() };
-
-    let mut heuristic_proximity = heuristics::HeuristicProximity { power: 1.05 };
-
-    let mut heuristic_proximity_hybrid = heuristics::HeuristicProximityWithSingle {
-        multi_power: 0.87,
-        single_power: 2.6,
-    };
-
-    match parsed_board {
-        Ok(board) => {
-            /*
-            let mut test_white_node = DecisionTreeNode {
-                board,
-                game_state: halma::GameState::Start,
-                children: vec![],
-                selected: false,
-            };
-            test_white_node.generate_children(halma::Player::White);
-            for child in test_white_node.children {
-                println!("{}", board_to_string(&child.board));
-            }
-            */
-            /*
-            let mut graph = Graph::<DecisionTreeNode, u64>::with_capacity(1000, 1000);
-            let mut test_tree = generate_tree(Some(1), board, &mut Some(&mut graph));
-            //println!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
-
-            println!("In total: {} children", graph.node_count());
-            */
-            // for (index, child) in test_tree.children.into_iter().enumerate() {
-            //     println!("Child {}", index);
-            //     display_board(&child.board)
-            // }
-
-            let first_node =
-                DecisionTreeNode::new(board, halma::GameState::Start(halma::Player::Black));
-            let mut now = Instant::now();
-            let mut node = first_node.clone();
-
-            let finish_random = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_random,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_random,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Random Heuristic game finished");
-            match finish_random {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
-
-            now = Instant::now();
-            node = first_node.clone();
-
-            let finish_prox = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Proximity Heuristic game finished");
-            match finish_prox {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
-
-            now = Instant::now();
-            node = first_node.clone();
-
-            let finish_prox_hybrid = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity_hybrid,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity_hybrid,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Proximity Heuristic game finished");
-            match finish_prox_hybrid {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
-        }
-        Err(error) => println!("Could not parse board: {}", error),
-    }
+    let board = board_from_str(&args[1]);
 }
