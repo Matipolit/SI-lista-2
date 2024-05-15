@@ -1,19 +1,59 @@
 mod decision_tree;
 mod halma;
 mod heuristics;
-mod minimax_new;
-//mod minmax;
+mod minimax;
 
-use halma::board_from_str;
+use halma::board_state_from_str;
 
-use minimax_new::LogLevel;
+use heuristics::Heuristic;
+use minimax::LogLevel;
 
 use std::{env, fs, time::Instant};
 
 use crate::{
     decision_tree::DecisionTreeNode,
-    minimax_new::{alfa_beta, minimax},
+    minimax::{alfa_beta, minimax},
 };
+
+fn run_test<A: Heuristic, B: Heuristic>(
+    function_str: &str,
+    heuristics: (&mut A, &mut B),
+    time: &mut Instant,
+    first_node: DecisionTreeNode,
+    max_depth: u32,
+    log_level: &LogLevel,
+    rounds_limit: Option<u32>,
+) {
+    *time = Instant::now();
+    let mut node = first_node.clone();
+    let test_name = format!("{} vs {}", heuristics.0.name(), heuristics.1.name());
+    let finish: Option<(DecisionTreeNode, u32, u32)> = match function_str {
+        "minimax" => minimax(
+            &mut node,
+            max_depth,
+            heuristics,
+            rounds_limit,
+            &log_level,
+        ),
+        _ => alfa_beta(
+            &mut node,
+            max_depth,
+            heuristics,
+            rounds_limit,
+            &log_level,
+        ),
+    };
+    let elapsed = time.elapsed();
+
+    println!("{} game finished", test_name);
+    match finish {
+        Some((node, skipped, rounds)) => {
+            println!("Took {} rounds", &rounds + skipped);
+        }
+        None => println!("Finished without winner"),
+    }
+    println!("Took {:.2?} seconds", elapsed.as_secs_f32());
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,7 +64,7 @@ fn main() {
     let board_string = fs::read_to_string(board_file)
         .expect(format!("Could not read board file: {}", board_file).as_str());
 
-    let parsed_board = board_from_str(&board_string);
+    let parsed_board = board_state_from_str(&board_string);
 
     let log_level: LogLevel = match args[2].as_str() {
         "none" => LogLevel::None,
@@ -39,139 +79,54 @@ fn main() {
     let rng = rand::thread_rng();
     let mut heuristic_random = heuristics::HeuristicRandom { rng: rng.clone() };
 
-    let mut heuristic_proximity = heuristics::HeuristicProximity { power: 1.05 };
+    let mut heuristic_proximity = heuristics::HeuristicProximity {
+        power: 1.05,
+        rng: rng.clone(),
+    };
 
     let mut heuristic_proximity_hybrid = heuristics::HeuristicProximityWithSingle {
         multi_power: 0.87,
         single_power: 2.6,
+        rng: rng.clone(),
     };
 
     match parsed_board {
         Ok(board) => {
-            /*
-            let mut test_white_node = DecisionTreeNode {
-                board,
-                game_state: halma::GameState::Start,
-                children: vec![],
-                selected: false,
-            };
-            test_white_node.generate_children(halma::Player::White);
-            for child in test_white_node.children {
-                println!("{}", board_to_string(&child.board));
-            }
-            */
-            /*
-            let mut graph = Graph::<DecisionTreeNode, u64>::with_capacity(1000, 1000);
-            let mut test_tree = generate_tree(Some(1), board, &mut Some(&mut graph));
-            //println!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
-
-            println!("In total: {} children", graph.node_count());
-            */
-            // for (index, child) in test_tree.children.into_iter().enumerate() {
-            //     println!("Child {}", index);
-            //     display_board(&child.board)
-            // }
-
             let first_node =
-                DecisionTreeNode::new(board, halma::GameState::Start(halma::Player::Black));
+                DecisionTreeNode::new(board, halma::GameState::Start(halma::Player::White));
             let mut now = Instant::now();
-            let mut node = first_node.clone();
-
-            let finish_random = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_random,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_random,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Random Heuristic game finished");
-            match finish_random {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
-
-            now = Instant::now();
-            node = first_node.clone();
-
-            let finish_prox = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Proximity Heuristic game finished");
-            match finish_prox {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
-
-            now = Instant::now();
-            node = first_node.clone();
-
-            let finish_prox_hybrid = match function.as_str() {
-                "minimax" => minimax(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity_hybrid,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-                _ => alfa_beta(
-                    &mut node,
-                    max_depth,
-                    &mut heuristic_proximity_hybrid,
-                    None,
-                    &log_level,
-                    halma::Player::Black,
-                ),
-            };
-            let elapsed = now.elapsed();
-
-            println!("Proximity Heuristic game finished");
-            match finish_prox_hybrid {
-                Some((node, skipped, rounds)) => {
-                    println!("Child at depth: {}\n{}", &skipped, &node);
-                    println!("Took {} rounds", &rounds);
-                }
-                None => println!("Finished without winner"),
-            }
-            println!("Took {:.2?} seconds", elapsed.as_secs_f32());
+            let mut new_proximity = heuristic_proximity.clone();
+            /*
+            run_test(
+                &function,
+                (&mut heuristic_random, &mut new_proximity),
+                &mut now,
+                first_node.clone(),
+                max_depth,
+                &log_level,
+                None,
+                "Random (white) vs proximity (black)".to_owned(),
+            );
+            run_test(
+                &function,
+                (&mut heuristic_proximity, &mut heuristic_proximity_hybrid),
+                &mut now,
+                first_node.clone(),
+                max_depth,
+                &log_level,
+                None,
+                "Proximity (white) vs proximity-hybrid (black)".to_owned(),
+            );
+            */
+            run_test(
+                &function,
+                (&mut heuristic_proximity_hybrid, &mut heuristic_proximity),
+                &mut now,
+                first_node.clone(),
+                max_depth,
+                &log_level,
+                None,
+            );
         }
         Err(error) => println!("Could not parse board: {}", error),
     }

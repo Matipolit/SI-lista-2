@@ -8,38 +8,59 @@ pub enum Tile {
 }
 pub type Board = [[Tile; 16]; 16];
 
-pub fn board_to_string(board: &Board) -> String {
+pub type PlayerCoords = [Coords; 19];
+
+#[derive(Debug, Clone, Copy)]
+pub struct BoardState {
+    pub black_coords: PlayerCoords,
+    pub white_coords: PlayerCoords,
+}
+
+pub fn board_state_to_string(board_state: &BoardState) -> String {
     let mut base_string = "".to_owned();
-    for row in board {
-        for cell in row {
-            match cell {
-                Tile::Empty => base_string += "0",
-                Tile::Black => base_string += "1",
-                Tile::White => base_string += "2",
+    for y in 0..16 {
+        for x in 0..16 {
+            if board_state.black_coords.contains(&Coords { x, y }) {
+                base_string += "1";
+            } else if board_state.white_coords.contains(&Coords { x, y }) {
+                base_string += "2";
+            } else {
+                base_string += "0";
             }
         }
-        base_string += "\n"
+        base_string += "\n";
     }
     return base_string;
 }
-pub fn board_from_str(board_str: &String) -> Result<Board, Box<dyn Error>> {
+
+pub fn board_state_from_str(board_str: &String) -> Result<BoardState, Box<dyn Error>> {
     let split_str = board_str.split('\n');
-    let mut board = [[Tile::Empty; 16]; 16];
+    let mut black_coords: Vec<Coords> = Vec::with_capacity(19);
+    let mut white_coords: Vec<Coords> = Vec::with_capacity(19);
     split_str.enumerate().for_each(|(row_idx, line)| {
         line.chars()
             .enumerate()
             .for_each(|(char_idx, char)| match char {
                 '0' => {}
                 '1' => {
-                    board[row_idx][char_idx] = Tile::Black;
+                    black_coords.push(Coords {
+                        x: char_idx as i8,
+                        y: row_idx as i8,
+                    });
                 }
                 '2' => {
-                    board[row_idx][char_idx] = Tile::White;
+                    white_coords.push(Coords {
+                        x: char_idx as i8,
+                        y: row_idx as i8,
+                    });
                 }
                 _ => {}
             });
     });
-    Ok(board)
+    Ok(BoardState {
+        black_coords: black_coords.as_slice().try_into()?,
+        white_coords: white_coords.as_slice().try_into()?,
+    })
 }
 
 #[inline]
@@ -69,7 +90,7 @@ pub enum GameState {
     Won(Player),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Coords {
     pub x: i8,
     pub y: i8,
@@ -99,7 +120,7 @@ pub static DIRECTIONS: [Coords; 8] = [
     Coords { x: 1, y: 1 },
 ];
 
-pub static PLAYER_BLACK_WINNING: [Coords; 19] = [
+pub static PLAYER_WHITE_BASE: [Coords; 19] = [
     Coords { x: 14, y: 11 },
     Coords { x: 15, y: 11 },
     Coords { x: 13, y: 12 },
@@ -121,7 +142,7 @@ pub static PLAYER_BLACK_WINNING: [Coords; 19] = [
     Coords { x: 15, y: 15 },
 ];
 
-pub static PLAYER_WHITE_WINNING: [Coords; 19] = [
+pub static PLAYER_BLACK_BASE: [Coords; 19] = [
     Coords { x: 0, y: 0 },
     Coords { x: 1, y: 0 },
     Coords { x: 2, y: 0 },
