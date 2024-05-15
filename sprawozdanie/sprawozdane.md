@@ -461,6 +461,10 @@ if PLAYER_WHITE_BASE.contains(&coord) {
 }
 ```
 
+### Heurystyka złożona
+
+Łącząca karę za zostawanie w bazie z promującą pionek przodujący
+
 ## 5. Porównanie Heurystyk
 
 ### Problem blokowania
@@ -501,18 +505,13 @@ fn dont_block_other_player_in_base(
 
 ## 6. Czas działania
 
-### Minimax przy głębokości 1
-
-Zapętla się w nieskończoność :(
-
-
 ### Minimax przy głębokości 2
 
 | Heurystyka  | Czas   | Liczba rund |
 |-------------|--------|-------------|
 | Losowa      | 41.99s | 21211       |
 | Odległość   | 1.52s  | 262         |
-| Wiodący   + | 1.33s  | 206         |
+| Wiodący     | 1.33s  | 206         |
 
 
 ### Alfa-beta przy głębokości 1
@@ -533,20 +532,24 @@ Zapętla się w nieskończoność :(
 
 ### Heurystyka vs heurystyka
 
+Analiza przeprowadzana przy głębokości 3:  
+
 W przypadku zestawienia z heurystyką losową, za każdym razem wygra heurystyka bardziej złożona.  
-Odległość vs wiodący pionek: Wiodący (191 rund)
-Odległość vs zniechęcanie do siedzenia na starcie: Odległość (206 rund)
-Wiodący pionek vs zniechęcanie do siedzenia na starce: Wiodący (198 rund)
+Odległość vs wiodący pionek: Wiodący (191 rund)  
+Odległość vs zniechęcanie do siedzenia na starcie: Zniechęcanie (189 rund)  
+Wiodący pionek vs zniechęcanie do siedzenia na starce: Wiodący (194 rund)  
+Odległość vs Złożona: Złożona (193 rundy)  
+Złożona vs Wiodący: Wiodący (192 rundy)  
 
 ### Głębokość 2 vs 3
 
 Wprowadziłem optymalizację do mojego programu, gdzie dla każdego stanu planszy nie przechowuję całej tablicy planszy, a jedynie koordynaty pionków obu graczy.  
 Pozwoliło mi to uruchomić niektóre algorytmy przy głębokości 3, chociaż nadal przy niektórych scenariuszach kończy mi się pamięć RAM.  
-Przykładowo algorytm Odległość vs Wiodący, przy głębokości 2 rozgrywka kończy się po *231* rundach, a przy głębokości 3 już po *191*.  
+Przykładowo algorytm Odległość vs Wiodący, przy głębokości 2 rozgrywka kończy się po **231** rundach, a przy głębokości 3 już po **191**.  
 
 ## 6. Wnioski
 Heurystyka z odległością manhatan okazała się dobrą bazą.  
 Heurysytka z wiodącym pionkiem ją ulepszyła.  
-Zniechęcanie do siedzenia na starcie to hybiony pomysł.  
+Zniechęcanie do siedzenia na starcie działało lepiej niż zwykła odległość, jednak przegrywa z pionkiem wiodącym.  
 Widać wyraźnie, że przycinanie alfa-beta dużo przyspiesza algorytm.  
 W stosunku do poprzedniej wersji, udało mi się zoptymalizować użycie pamięci RAM, co poprawiło rezultaty w niektórych algorytmach.

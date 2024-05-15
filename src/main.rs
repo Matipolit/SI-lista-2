@@ -151,7 +151,7 @@ fn main() {
 
             run_test(
                 &function,
-                (&mut heuristic_proximity, &mut heuristic_discourage),
+                (&mut heuristic_leading, &mut heuristic_complex),
                 &mut now,
                 first_node.clone(),
                 max_depth,

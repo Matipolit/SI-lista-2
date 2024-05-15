@@ -240,9 +240,9 @@ impl Heuristic for HeuristicComplex {
                 for coord in board_state.black_coords {
                     let mut tile_ev =
                         PLAYER_BLACK_HEURISTIC_PROXIMITY[coord.y as usize][coord.x as usize];
-                    // if PLAYER_BLACK_BASE.contains(&coord) {
-                    //     tile_ev -= self.discourage_power;
-                    // }
+                    if PLAYER_BLACK_BASE.contains(&coord) {
+                        tile_ev -= self.discourage_power;
+                    }
                     score += tile_ev;
                     if tile_ev > max {
                         max = tile_ev;
@@ -259,9 +259,9 @@ impl Heuristic for HeuristicComplex {
                 for coord in board_state.white_coords {
                     let mut tile_ev =
                         PLAYER_WHITE_HEURISTIC_PROXIMITY[coord.y as usize][coord.x as usize];
-                    // if PLAYER_WHITE_BASE.contains(&coord) {
-                    //     tile_ev -= self.discourage_power;
-                    // }
+                    if PLAYER_WHITE_BASE.contains(&coord) {
+                        tile_ev -= self.discourage_power;
+                    }
                     score += tile_ev;
                     if tile_ev > max {
                         max = tile_ev;
