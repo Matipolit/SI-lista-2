@@ -450,7 +450,56 @@ Dodanie ważonej maksymalnej wartości pionka do wyniku:
 ```rust
 score = score * self.multi_power + max * self.single_power;
 ```
-## 5. Wyniki
+
+### Heurystyka dodająca karę za stanie w swojej bazie
+
+Modyfikacja heurystyki pierwszej
+
+```rust
+if PLAYER_WHITE_BASE.contains(&coord) {
+    score -= self.discourage_power;
+}
+```
+
+## 5. Porównanie Heurystyk
+
+### Problem blokowania
+
+W niektórych sytuacjach, szczególnie używając heurystyki losowej, występował następujący problem:
+
+![Przykład blokowania](blokada_w_bazie.png "przykład blokowania")
+
+Pionki jednego z graczy jeszcze nie wyszły z bazy, podczas gdy drugi już do niej wszedł. Powodowało to, że pionki drugiego gracza nie mogły już wyjść, podczas, gdy gracz 1 nie mógł zdobyć tej bazy.
+
+### Rozwiązanie
+
+Napisałem funkcję, która będzie karać pionki za stanie blisko pionków drugiego gracza, które są w jego bazie.
+
+```rust
+fn dont_block_other_player_in_base(
+    piece_coords: &Coords,
+    other_player_base: &[Coords; 19],
+    other_player_pieces: &[Coords; 19],
+) -> f32 {
+    let mut score = 0.;
+    for direction in DIRECTIONS {
+        let looking_at_coords = Coords {
+            x: piece_coords.x + direction.x,
+            y: piece_coords.y + direction.y,
+        };
+        if looking_at_coords.is_in_board() {
+            if other_player_pieces.contains(&looking_at_coords) {
+                if other_player_base.contains(&looking_at_coords) {
+                    score -= 2.;
+                }
+            }
+        }
+    }
+    return score;
+}
+```
+
+## 6. Czas działania
 
 ### Minimax przy głębokości 1
 
@@ -463,7 +512,7 @@ Zapętla się w nieskończoność :(
 |-------------|--------|-------------|
 | Losowa      | 41.99s | 21211       |
 | Odległość   | 1.52s  | 262         |
-| Odległość + | 1.33s  | 206         |
+| Wiodący   + | 1.33s  | 206         |
 
 
 ### Alfa-beta przy głębokości 1
@@ -472,7 +521,7 @@ Zapętla się w nieskończoność :(
 |-------------|-------|-------------|
 | Losowa      | 0.37s | 13816       |
 | Odległość   | 0.01s | 262         |
-| Odległość + | 0.01s | 206         |
+| Wiodący     | 0.01s | 206         |
 
 ### Alfa-beta przy głębokości 2
 
@@ -480,11 +529,24 @@ Zapętla się w nieskończoność :(
 |-------------|--------|-------------|
 | Losowa      | 30.49s | 13843       |
 | Odległość   | 0.83s  | 261         |
-| Odległość + | 0.69s  | 205         |
+| Wiodący     | 0.69s  | 205         |
 
+### Heurystyka vs heurystyka
+
+W przypadku zestawienia z heurystyką losową, za każdym razem wygra heurystyka bardziej złożona.  
+Odległość vs wiodący pionek: Wiodący (191 rund)
+Odległość vs zniechęcanie do siedzenia na starcie: Odległość (206 rund)
+Wiodący pionek vs zniechęcanie do siedzenia na starce: Wiodący (198 rund)
+
+### Głębokość 2 vs 3
+
+Wprowadziłem optymalizację do mojego programu, gdzie dla każdego stanu planszy nie przechowuję całej tablicy planszy, a jedynie koordynaty pionków obu graczy.  
+Pozwoliło mi to uruchomić niektóre algorytmy przy głębokości 3, chociaż nadal przy niektórych scenariuszach kończy mi się pamięć RAM.  
+Przykładowo algorytm Odległość vs Wiodący, przy głębokości 2 rozgrywka kończy się po *231* rundach, a przy głębokości 3 już po *191*.  
 
 ## 6. Wnioski
+Heurystyka z odległością manhatan okazała się dobrą bazą.  
+Heurysytka z wiodącym pionkiem ją ulepszyła.  
+Zniechęcanie do siedzenia na starcie to hybiony pomysł.  
 Widać wyraźnie, że przycinanie alfa-beta dużo przyspiesza algorytm.  
-Wyniki przy głębokości 1 są takie same jak przy 2, jednak dużo szybsze. Jednak przy zastosowaniu dwóch różnych heurystyk dla różnych graczy mogłyby się tam uwidocznić większe różnice.
-Ogólnie moja implementacja algorytmu jest szybka, jednak zużywa dużo pamięci RAM, przez co nie jestem w stanie przeprowadzić analizy dla głębokości 3.  
-Mam kilka pomysłów na zoptymalizowanie ilości użytej pamięci, jednak nie starczyło mi czasu na ich implementację.
+W stosunku do poprzedniej wersji, udało mi się zoptymalizować użycie pamięci RAM, co poprawiło rezultaty w niektórych algorytmach.

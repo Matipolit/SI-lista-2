@@ -129,6 +129,10 @@ pub fn minimax<A: Heuristic, B: Heuristic>(
                     *node = node.children.swap_remove(eval_node);
                     if matches!(log_level, LogLevel::All) {
                         println!("Evaluated node is: {} with score: {}", eval_node, eval);
+                        match current_heuristic {
+                            false => println!("Evaluated with heur.: {}", heuristics.0.name()),
+                            true => println!("Evaluated with heur.: {}", heuristics.1.name()),
+                        }
                         println!("Children of node: {}", &node.children.len());
                         println!("{}", &node);
                     }
@@ -206,6 +210,7 @@ pub fn alfa_beta<A: Heuristic, B: Heuristic>(
         };
 
         if current_depth == 0 {
+            //println!("Evaluating from the perspective of {:?}", player);
             return MinMaxResult::Eval(
                 heuristic.evaluate(&node.board_state, player, round_number),
                 node_index,
@@ -308,6 +313,10 @@ pub fn alfa_beta<A: Heuristic, B: Heuristic>(
                     if matches!(log_level, LogLevel::All) {
                         println!("Evaluated node is: {} with score: {}", eval_node, eval);
                         println!("Children of node: {}", &node.children.len());
+                        match current_heuristic {
+                            false => println!("Evaluated with heur.: {}", heuristics.0.name()),
+                            true => println!("Evaluated with heur.: {}", heuristics.1.name()),
+                        }
                         println!("{}", &node);
                     }
 
@@ -315,7 +324,7 @@ pub fn alfa_beta<A: Heuristic, B: Heuristic>(
                     current_heuristic = !current_heuristic;
 
                     result = match current_heuristic {
-                        true => Some(alfa_beta_inner(
+                        false => Some(alfa_beta_inner(
                             node,
                             max_depth,
                             heuristics.0,
@@ -326,7 +335,7 @@ pub fn alfa_beta<A: Heuristic, B: Heuristic>(
                             player,
                             rounds,
                         )),
-                        false => Some(alfa_beta_inner(
+                        true => Some(alfa_beta_inner(
                             node,
                             max_depth,
                             heuristics.1,

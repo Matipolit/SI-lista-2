@@ -42,7 +42,7 @@ impl DecisionTreeNode {
         self.generated = true;
         let my_coords = match player_moving {
             Player::Black => self.board_state.black_coords,
-            _ => self.board_state.white_coords,
+            Player::White => self.board_state.white_coords,
         };
         // for y in 0..16 {
         //     for x in 0..16 {

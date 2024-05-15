@@ -27,28 +27,19 @@ fn run_test<A: Heuristic, B: Heuristic>(
     *time = Instant::now();
     let mut node = first_node.clone();
     let test_name = format!("{} vs {}", heuristics.0.name(), heuristics.1.name());
+
+    println!("Playing {}", test_name);
     let finish: Option<(DecisionTreeNode, u32, u32)> = match function_str {
-        "minimax" => minimax(
-            &mut node,
-            max_depth,
-            heuristics,
-            rounds_limit,
-            &log_level,
-        ),
-        _ => alfa_beta(
-            &mut node,
-            max_depth,
-            heuristics,
-            rounds_limit,
-            &log_level,
-        ),
+        "minimax" => minimax(&mut node, max_depth, heuristics, rounds_limit, &log_level),
+        _ => alfa_beta(&mut node, max_depth, heuristics, rounds_limit, &log_level),
     };
     let elapsed = time.elapsed();
 
-    println!("{} game finished", test_name);
+    println!("\n\n\n\n{} game finished", test_name);
     match finish {
         Some((node, skipped, rounds)) => {
             println!("Took {} rounds", &rounds + skipped);
+            println!("{}", node);
         }
         None => println!("Finished without winner"),
     }
@@ -80,47 +71,87 @@ fn main() {
     let mut heuristic_random = heuristics::HeuristicRandom { rng: rng.clone() };
 
     let mut heuristic_proximity = heuristics::HeuristicProximity {
-        power: 1.05,
+        power: 1.08,
         rng: rng.clone(),
     };
 
-    let mut heuristic_proximity_hybrid = heuristics::HeuristicProximityWithSingle {
-        multi_power: 0.87,
-        single_power: 2.6,
+    let mut heuristic_leading = heuristics::HeuristicProximityWithSingle {
+        multi_power: 0.9,
+        single_power: 2.5,
         rng: rng.clone(),
     };
+
+    let mut heuristic_discourage = heuristics::HeuristicDiscourageStart {
+        other_power: 1.1,
+        discourage_power: 1.0,
+    };
+
+    let mut heuristic_complex = heuristics::HeuristicComplex {
+        single_power: 2.5,
+        multi_power: 0.9,
+        discourage_power: 1.0,
+    };
+
+    //heuristics::print_new_table();
 
     match parsed_board {
         Ok(board) => {
             let first_node =
-                DecisionTreeNode::new(board, halma::GameState::Start(halma::Player::White));
+                DecisionTreeNode::new(board, halma::GameState::Start(halma::Player::Black));
             let mut now = Instant::now();
-            let mut new_proximity = heuristic_proximity.clone();
-            /*
+            // run_test(
+            //     &function,
+            //     (&mut heuristic_random, &mut heuristic_leading),
+            //     &mut now,
+            //     first_node.clone(),
+            //     max_depth,
+            //     &log_level,
+            //     None,
+            // );
+            // let mut new_proximity = heuristic_proximity.clone();
+
+            // run_test(
+            //     &function,
+            //     (&mut heuristic_random, &mut heuristic_discourage),
+            //     &mut now,
+            //     first_node.clone(),
+            //     max_depth,
+            //     &log_level,
+            //     None,
+            // );
+
+            // run_test(
+            //     &function,
+            //     (&mut heuristic_proximity, &mut heuristic_proximity_hybrid),
+            //     &mut now,
+            //     first_node.clone(),
+            //     max_depth,
+            //     &log_level,
+            //     None,
+            // );
+            // run_test(
+            //     &function,
+            //     (&mut heuristic_proximity, &mut heuristic_discourage),
+            //     &mut now,
+            //     first_node.clone(),
+            //     max_depth,
+            //     &log_level,
+            //     None,
+            // );
+
+            // run_test(
+            //     &function,
+            //     (&mut heuristic_proximity_hybrid, &mut heuristic_discourage),
+            //     &mut now,
+            //     first_node.clone(),
+            //     max_depth,
+            //     &log_level,
+            //     None,
+            // );
+
             run_test(
                 &function,
-                (&mut heuristic_random, &mut new_proximity),
-                &mut now,
-                first_node.clone(),
-                max_depth,
-                &log_level,
-                None,
-                "Random (white) vs proximity (black)".to_owned(),
-            );
-            run_test(
-                &function,
-                (&mut heuristic_proximity, &mut heuristic_proximity_hybrid),
-                &mut now,
-                first_node.clone(),
-                max_depth,
-                &log_level,
-                None,
-                "Proximity (white) vs proximity-hybrid (black)".to_owned(),
-            );
-            */
-            run_test(
-                &function,
-                (&mut heuristic_proximity_hybrid, &mut heuristic_proximity),
+                (&mut heuristic_proximity, &mut heuristic_discourage),
                 &mut now,
                 first_node.clone(),
                 max_depth,
